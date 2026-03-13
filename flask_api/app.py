@@ -5,6 +5,9 @@ from routes import routes
 from models import User
 from dotenv import load_dotenv
 import os
+from utils.env_validator import validate_env
+
+validate_env()
 
 # Load .env variables
 load_dotenv()
@@ -16,19 +19,17 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"postgresql+psycopg2://{os.getenv('DB_U
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
-# Initialize extensions
 db.init_app(app)
 jwt = JWTManager(app)
 app.register_blueprint(routes, url_prefix="/api")
 
-# Create tables if they don't exist
 with app.app_context():
     db.create_all()
 
 # Login route
 @app.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()  # use get_json() for JSON payloads
+    data = request.get_json()  
     username = data.get("username")
 
     if not username:

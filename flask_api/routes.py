@@ -8,7 +8,7 @@ routes = Blueprint("routes", __name__)
 @routes.route("/documents", methods=["GET"])
 @jwt_required()
 def get_documents():
-    user_id = get_jwt_identity()  # integer ID from JWT
+    user_id = get_jwt_identity() 
     docs = Document.query.filter_by(user_id=user_id).all()
 
     return jsonify([

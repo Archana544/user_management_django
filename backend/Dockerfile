@@ -22,11 +22,11 @@ RUN pip install -r requirements.txt
 # Copy project
 COPY . .
 
-# Collect static files (for Django static serving)
-# RUN python manage.py collectstatic --noinput
-
-# Expose port
 EXPOSE 8000
+RUN DJANGO_SECRET_KEY=placeholder-build-key \
+    OPENAI_API_KEY=placeholder \
+    AZURE_CONNECTION_STRING=placeholder \
+    AZURE_CONTAINER_NAME=placeholder \
+    python manage.py collectstatic --noinput
 
-# Run Django server
-CMD ["gunicorn", "backend.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "user_service.wsgi:application", "--bind", "0.0.0.0:8000"]

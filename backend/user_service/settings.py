@@ -1,23 +1,27 @@
 from pathlib import Path
 from datetime import timedelta
-
 import os
+from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-for-build-only")
+DEBUG = False
 
-SECRET_KEY = 'django-insecure-^b7x$ecr&rw1sk!-&k*dj#0#q#mdu5xedz!+!bs@l43922kkp)'
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "user_service.settings")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+import logging
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "my-containerapp.redgrass-66159ae4.westus.azurecontainerapps.io",
+    "127.0.0.1",
+    "localhost"
+]
 
-
-# Application definition
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,19 +32,19 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "corsheaders",
     "rest_framework",
-    "user_service",
+    "rest_framework_simplejwt",
     'drf_spectacular',
+    "user_service",
 ]
 
 MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
 ROOT_URLCONF = 'user_service.urls'
@@ -65,17 +69,21 @@ WSGI_APPLICATION = 'user_service.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': getenv('PGDATABASE'),
+        'USER': getenv('PGUSER'),
+        'PASSWORD': getenv('PGPASSWORD'),
+        'HOST': getenv('PGHOST'),
+        'PORT': getenv('PGPORT', 5432),
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
 
+
 AUTH_USER_MODEL = "user_service.User"
-
-
-
-# Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -94,11 +102,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+     "https://frontend-app.redgrass-66159ae4.westus.azurecontainerapps.io",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
+    "https://frontend-app.redgrass-66159ae4.westus.azurecontainerapps.io",
+    "https://my-containerapp.redgrass-66159ae4.westus.azurecontainerapps.io"
 ]
 
 LANGUAGE_CODE = 'en-us'
@@ -111,7 +122,7 @@ USE_TZ = True
 
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -119,6 +130,7 @@ REST_FRAMEWORK = {
           'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "EXCEPTION_HANDLER": "user_service.exceptions.custom_exception_handler"
 }
 
 SPECTACULAR_SETTINGS = {
@@ -129,4 +141,31 @@ SPECTACULAR_SETTINGS = {
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=120),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+     "ROTATE_REFRESH_TOKENS": True,  
+    "BLACKLIST_AFTER_ROTATION": False,
 }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "ERROR",
+        },
+        "root": {
+            "handlers": ["console"],
+            "level": "ERROR",
+        },
+    },
+}
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+ENABLE_RAG = True

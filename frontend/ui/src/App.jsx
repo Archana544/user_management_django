@@ -1,15 +1,28 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from './pages/Login'
-import LoginDashboard from "./pages/LoginDashboard";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import DashboardLayout from "./pages/DashboardLayout";
+import DocumentsPage from "./pages/DocumentsPage";
+import ChatPage from "./pages/Chatpage";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import { DocumentProvider } from "./context/DocumentContext";
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
+    <DocumentProvider>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<LoginDashboard />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="chat" element={<ChatPage />} />
+          </Route>
+        </Route>
+
       </Routes>
-    </Router>
+      </DocumentProvider>
+    </BrowserRouter>
   );
 }
 

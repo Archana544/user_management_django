@@ -1,19 +1,26 @@
-Django>=5.0
+Django==5.0.6
 djangorestframework
 django-cors-headers
 python-dotenv
 psycopg2-binary
 
-flask
-flask-cors
 gunicorn
 
 openai
 requests
 
-pypdf
+PyPDF2
 python-docx
 openpyxl
+
+djangorestframework-simplejwt
+django-ratelimit
+drf-spectacular
+
+numpy
+faiss-cpu
+
+azure-storage-blob
 
 pytest
 pytest-django

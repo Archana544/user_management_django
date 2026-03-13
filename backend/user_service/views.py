@@ -1,22 +1,52 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import api_view
-from utils.free_rag import retrieve_relevant_context
+from rest_framework import viewsets, permissions
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django.http import JsonResponse
+from django.db import connection
+from django.contrib.auth import get_user_model
+from django.conf import settings
+
 from .models import Document
-from PyPDF2 import PdfReader
-from .serializers import UserSerializer, DocumentSerializer
-import csv
-import os
-import openai
-# from utils.rag_pipeline import index_document
+from .serializers import DocumentSerializer, UserSerializer, TitleOnlySerializer
+from utils.document_parser import extract_pdf_text, parse_csv
+from utils.vector_store import search_similar_chunks
+from utils.vector_store import add_document_to_index
+from utils.rag_pipeline import build_rag_prompt
+from utils.llm_service import generate_answer
 
 User = get_user_model()
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = UserSerializer
+
+#     def post(self, request, *args, **kwargs):
+#         response = super().post(request, *args, **kwargs)
+
+#         refresh_token = response.data.pop("refresh")  
+
+#         response.set_cookie(
+#             key="refresh_token",
+#             value=refresh_token,
+#             httponly=True,
+#             secure=not settings.DEBUG,
+#             samesite="Lax",
+#             max_age=30 * 24 * 60 * 60,
+#         )
+
+#         return response  # body now only has { "access": "..." }
+
+
+# class CustomTokenRefreshView(TokenRefreshView):
+
+#     def post(self, request, *args, **kwargs):
+#         refresh_token = request.COOKIES.get("refresh_token")
+
+#         if not refresh_token:
+#             return Response({"error": "Refresh token not found."}, status=401)
+
+#         request.data["refresh"] = refresh_token
+
+#         return super().post(request, *args, **kwargs)
 
 class UserProfileView(viewsets.ViewSet):  
     permission_classes = [permissions.IsAuthenticated]
@@ -25,41 +55,50 @@ class UserProfileView(viewsets.ViewSet):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
-def extract_pdf_text(file_path):
-    text = ""
-
-    reader = PdfReader(file_path)
-
-    for page in reader.pages:
-        extracted = page.extract_text()
-        if extracted:
-            text += extracted
-        print("EXTRACTED TEXT:", text)
-    return text
-
-def parse_csv(file_path):
-    extracted_data = []
-
-    with open(file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-
-        for row in reader:
-            # Process each row here
-            extracted_data.append(row)
-
-    return extracted_data
-
 class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Document.objects.filter(user=self.request.user)
+        queryset = Document.objects.filter(user=self.request.user)
+
+        title           = self.request.query_params.get("title")
+        doc_id          = self.request.query_params.get("id")
+        file_type       = self.request.query_params.get("file_type")  
+        status          = self.request.query_params.get("status") 
+        uploaded_after  = self.request.query_params.get("uploaded_after")   
+        uploaded_before = self.request.query_params.get("uploaded_before")  
+        retry_count     = self.request.query_params.get("retry_count")
+
+        if title:
+           queryset = queryset.filter(title__icontains=title)
+        if doc_id:
+           queryset = queryset.filter(id=doc_id)
+        if file_type:
+           queryset = queryset.filter(file_type=file_type.upper())  
+        if status:
+           queryset = queryset.filter(status=status.upper())        
+        if uploaded_after:
+           queryset = queryset.filter(uploaded_at__gte=uploaded_after)
+        if uploaded_before:
+           queryset = queryset.filter(uploaded_at__lte=uploaded_before)
+        if retry_count:
+            queryset = queryset.filter(retry_count=retry_count)
+
+        return queryset
+    
+    def get_serializer_class(self):
+        if self.request.query_params.get("fields") == "title":
+            return TitleOnlySerializer
+        return DocumentSerializer
 
     def perform_create(self, serializer):
         document = serializer.save(
             user=self.request.user,
-            file_type=serializer.validated_data["file"].name.split('.')[-1].upper()
+            file_type=serializer.validated_data["file"].name.split('.')[-1].upper(),
+            status="UPLOADED",
+            retry_count=0,      
+            max_retries=3
         )
 
         file_path = document.file.path
@@ -69,47 +108,45 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 extracted_content = extract_pdf_text(file_path)
 
             elif document.file_type == "CSV":
-                extracted_content = str(parse_csv(file_path))
+                extracted_content = parse_csv(file_path)
 
             else:
-                extracted_content = None
+                extracted_content = ""
 
             document.extracted_content = extracted_content
+            document.status = "EMBEDDING_CREATED"
+            document.save()
+
+            add_document_to_index(document.id, extracted_content)
+            document.status = "LLM_RESPONSE_GENERATED"
+            document.save()
+
             document.status = "completed"
+            document.save()
 
         except Exception as e:
-            document.extracted_content = f"Extraction failed: {str(e)}"
             document.status = "failed"
-        document.save()
+            document.extracted_content = f"Extraction failed: {str(e)}"
+            document.save()
 
-
-        # index_document(document.id, extracted_content)
 
 @api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
 def rag_chat(request):
+    if not getattr(settings, "ENABLE_RAG", False):
+        return Response({"answer": "RAG system is currently disabled."})
 
-    query = request.data.get("query")
+    try:
+        query = request.data.get("query")
+        if not query:
+            return Response({"error": "Query missing"}, status=400)
 
-    context = retrieve_relevant_context(query)
+        context_chunks = search_similar_chunks(query, top_k=3)
+        prompt = build_rag_prompt(query, context_chunks)
+        answer = generate_answer(prompt)
+        return Response({"answer": answer})
 
-    prompt = f"""
-    Answer using the context below.
-
-    Context:
-    {context}
-
-    Question:
-    {query}
-    """
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a document assistant."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    return Response({
-        "answer": response["choices"][0]["message"]["content"]
-    })        
+    except Exception as e:
+        logger.error(str(e), exc_info=True)
+        return Response({"error": "Internal server error"}, status=500)
+    

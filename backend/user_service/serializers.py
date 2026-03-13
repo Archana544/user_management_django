@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from .models import Document
 
 User = get_user_model()
-
+    
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -13,5 +13,12 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = ["id", "title", "file", "file_type", "uploaded_at", "extracted_content"]
-        read_only_fields = ["id", "file_type", "uploaded_at"]
+        fields = ["id", "title", "file", "file_type", "uploaded_at", 
+                  "extracted_content", "status", "retry_count", "max_retries", "user"]
+        read_only_fields = ["file_type", "uploaded_at", "extracted_content", 
+                            "status", "retry_count", "max_retries", "user"]
+
+class TitleOnlySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
+        fields = ["title"]

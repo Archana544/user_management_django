@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for routing
+import { BACKEND_URL } from "../api/api";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -8,37 +9,42 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate(); // Initialize navigate function
-
+  const token = localStorage.getItem("accessToken");
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/token/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+  try {
+    console.log("API URL:", BACKEND_URL);
+    const res = await fetch(`${BACKEND_URL}/api/token/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username,
+        password
+      }),
+    });
 
-      if (!res.ok) {
-        throw new Error("Invalid username or password");
-      }
-
-      const data = await res.json();
-
-      // Store JWT tokens
-      localStorage.setItem("accessToken", data.access);
-      localStorage.setItem("refreshToken", data.refresh);
-
-      // Navigate to LoginDashboard after successful login
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      throw new Error("Invalid username or password");
     }
-  };
+
+    const data = await res.json();
+
+    localStorage.setItem("accessToken", data.access);
+    localStorage.setItem("refreshToken", data.refresh);
+
+    navigate("/dashboard");
+
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={styles.container}>
