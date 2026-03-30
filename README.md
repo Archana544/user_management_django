@@ -246,32 +246,6 @@ docker build -t doc-platform-frontend ./frontend
 # Run frontend container
 docker run -p 80:80 doc-platform-frontend
 ```
-
----
-
-## Project Structure
-
-```
-ai-document-intelligence/
-├── backend/
-│   ├── documents/          # Document upload, extraction, RAG logic
-│   ├── authentication/     # JWT auth, user management
-│   ├── core/               # Settings, URLs, middleware
-│   ├── requirements.txt
-│   └── manage.py
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── pages/          # Route-level pages
-│   │   ├── services/       # Axios API calls
-│   │   └── store/          # Redux state management
-│   ├── nginx.conf
-│   ├── Dockerfile
-│   └── package.json
-├── docker-compose.yml
-└── README.md
-```
-
 ---
 
 ## Environment Variables Reference
