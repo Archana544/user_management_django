@@ -29,7 +29,6 @@ urlpatterns = [
     "api/v1/documents/<int:pk>/",
     DocumentViewSet.as_view({
         "get": "retrieve",
-        "patch": "partial_update",
         "delete": "destroy"
     })
     ),

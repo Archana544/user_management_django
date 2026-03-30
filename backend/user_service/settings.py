@@ -5,7 +5,7 @@ from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+# api_key = os.getenv("OPENAI_API_KEY")
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-for-build-only")
 DEBUG = False
@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     'drf_spectacular',
     "user_service",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 MIDDLEWARE = [
@@ -68,17 +69,13 @@ WSGI_APPLICATION = 'user_service.wsgi.application'
 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': getenv('PGDATABASE'),
-        'USER': getenv('PGUSER'),
-        'PASSWORD': getenv('PGPASSWORD'),
-        'HOST': getenv('PGHOST'),
-        'PORT': getenv('PGPORT', 5432),
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
-        'DISABLE_SERVER_SIDE_CURSORS': True,
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "ai_doc_platform"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -169,3 +166,12 @@ LOGGING = {
 }
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 ENABLE_RAG = True
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:29092")
+KAFKA_TOPIC_DOCUMENTS = os.getenv("KAFKA_TOPIC_DOCUMENTS", "document_events")
+KAFKA_TOPIC_NOTIFICATIONS = os.getenv("KAFKA_TOPIC_NOTIFICATIONS", "notifications")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

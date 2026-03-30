@@ -6,10 +6,12 @@ psycopg2-binary
 
 gunicorn
 
-openai
+
 requests
 
-PyPDF2
+# AI
+google-genai>=0.8.0
+pypdf==4.0.1
 python-docx
 openpyxl
 
@@ -17,10 +19,17 @@ djangorestframework-simplejwt
 django-ratelimit
 drf-spectacular
 
-numpy
-faiss-cpu
+# PostgreSQL
+psycopg2-binary==2.9.9
+pgvector==0.2.4
 
-azure-storage-blob
+# Kafka
+confluent-kafka==2.3.0
+
+# numpy
+# faiss-cpu
+
+# azure-storage-blob
 
 pytest
 pytest-django

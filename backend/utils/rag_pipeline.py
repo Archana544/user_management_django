@@ -12,7 +12,6 @@ Question: {question}
 Context:
 {context}
 
-If the answer is not found, respond exactly with "I don't know".
 
 Answer:
 """
