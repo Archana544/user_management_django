@@ -76,8 +76,7 @@ A full-stack AI-powered platform for secure document ingestion, text extraction,
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Archana544/ai-document-intelligence.git
-cd ai-document-intelligence
+git clone https://github.com/Archana544/user_management_django.git
 ```
 
 ---
@@ -127,7 +126,7 @@ python manage.py runserver
 ### 3. Frontend Setup
 
 ```bash
-cd frontend
+cd frontend/ui
 npm install
 npm start
 ```
