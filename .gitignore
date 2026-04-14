@@ -1,17 +1,5 @@
-# Virtual Environments
 venv/
-backend/venv/
-flask_api/.venv_flask/
 .venv/
-.venv_*/
-
-# Python
 __pycache__/
 *.pyc
-*.pyo
-
-# Django
-db.sqlite3
-
-# Environment files
 .env
